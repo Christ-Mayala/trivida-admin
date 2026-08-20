@@ -15,9 +15,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // Base path /admin/ uniquement en production (build)
-  // En dev, on sert depuis la racine pour éviter l'erreur "did you mean /admin/"
-  base: process.env.NODE_ENV === 'production' ? '/admin/' : '/',
+  // Base path : '/' par défaut (Netlify, Vercel, etc.)
+  // Si tu héberges sur le backend DRY, mets BASE_PATH=/admin/ dans .env
+  base: process.env.BASE_PATH || '/',
   build: {
     outDir: 'dist',
     sourcemap: false,
