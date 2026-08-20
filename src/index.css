@@ -1,0 +1,113 @@
+/**
+ * Global Styles — Trivida Admin Panel
+ * 
+ * Tailwind CSS + styles de base pour le dark mode admin
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base ─────────────────────────────────────────────────────────────── */
+@layer base {
+  body {
+    @apply bg-gray-950 text-gray-100 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Scrollbar customisée pour le dark mode */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+}
+
+/* ─── Composants réutilisables ─────────────────────────────────────────── */
+@layer components {
+  /* Carte admin avec bordure et ombre */
+  .admin-card {
+    @apply bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-lg;
+  }
+
+  /* KPI Card */
+  .kpi-card {
+    @apply admin-card flex flex-col gap-2;
+  }
+  .kpi-card .kpi-label {
+    @apply text-sm text-gray-400 font-medium;
+  }
+  .kpi-card .kpi-value {
+    @apply text-3xl font-bold text-white;
+  }
+  .kpi-card .kpi-change {
+    @apply text-sm font-medium;
+  }
+  .kpi-card .kpi-change.positive {
+    @apply text-emerald-400;
+  }
+  .kpi-card .kpi-change.negative {
+    @apply text-red-400;
+  }
+
+  /* Table admin */
+  .admin-table {
+    @apply w-full text-sm text-left;
+  }
+  .admin-table thead {
+    @apply text-xs text-gray-400 uppercase bg-gray-800/50;
+  }
+  .admin-table th {
+    @apply px-4 py-3;
+  }
+  .admin-table td {
+    @apply px-4 py-3 border-t border-gray-800;
+  }
+  .admin-table tbody tr:hover {
+    @apply bg-gray-800/30;
+  }
+
+  /* Bouton principal */
+  .btn-primary {
+    @apply px-4 py-2 bg-trivida-600 hover:bg-trivida-700 text-white font-medium rounded-lg transition-colors;
+  }
+
+  /* Bouton secondaire */
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium rounded-lg border border-gray-700 transition-colors;
+  }
+
+  /* Badge de statut */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-success {
+    @apply bg-emerald-900/50 text-emerald-300 border border-emerald-800;
+  }
+  .badge-warning {
+    @apply bg-amber-900/50 text-amber-300 border border-amber-800;
+  }
+  .badge-danger {
+    @apply bg-red-900/50 text-red-300 border border-red-800;
+  }
+  .badge-info {
+    @apply bg-blue-900/50 text-blue-300 border border-blue-800;
+  }
+
+  /* Input admin */
+  .admin-input {
+    @apply w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-trivida-500 focus:border-transparent transition-colors;
+  }
+
+  /* Select admin */
+  .admin-select {
+    @apply admin-input appearance-none cursor-pointer;
+  }
+}
