@@ -69,7 +69,7 @@ export default function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
-      <BrowserRouter basename="/admin">
+      <BrowserRouter basename={import.meta.env.BASE_URL || '/'}>
         <Routes>
           {/* Route publique : Login */}
           <Route path="/login" element={
