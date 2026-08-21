@@ -1,14 +1,16 @@
 /**
- * App.jsx — Trivida Admin Panel
+ * App.jsx — TRIVIDA COMMAND CENTER
  * 
  * Routeur principal avec protection des routes admin.
- * Toutes les routes sauf /login nécessitent une authentification.
+ * Architecture complète : Dashboard, Intel, Business, Subscriptions, Support, Admin.
  */
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import Layout from './components/Layout';
+
+// Pages originales
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
 import UsersPage from './pages/UsersPage';
@@ -22,9 +24,23 @@ import SettingsPage from './pages/SettingsPage';
 import MessagingPage from './pages/MessagingPage';
 import PerformancePage from './pages/PerformancePage';
 
+// Pages Intel
+import IntelPage from './pages/IntelPage';
+import IntelProfilesPage from './pages/IntelProfilesPage';
+import IntelHealthPage from './pages/IntelHealthPage';
+import IntelGrowthPage from './pages/IntelGrowthPage';
+import IntelDecisionsPage from './pages/IntelDecisionsPage';
+import IntelPredictionsPage from './pages/IntelPredictionsPage';
+
+// Pages nouvelles
+import SubscriptionsPage from './pages/SubscriptionsPage';
+import FeatureFlagsPage from './pages/FeatureFlagsPage';
+import NotificationsPushPage from './pages/NotificationsPushPage';
+import SupportPage from './pages/SupportPage';
+import AdminsPage from './pages/AdminsPage';
+
 /**
  * Composant de protection des routes
- * Redirige vers /login si non authentifié
  */
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -84,16 +100,48 @@ export default function App() {
               <Layout />
             </ProtectedRoute>
           }>
+            {/* Dashboard */}
             <Route index element={<OverviewPage />} />
+            
+            {/* Utilisateurs */}
             <Route path="users" element={<UsersPage />} />
             <Route path="users/:id" element={<UserDetailPage />} />
+            
+            {/* Trivida Intel */}
+            <Route path="intel" element={<IntelPage />} />
+            <Route path="intel/profiles" element={<IntelProfilesPage />} />
+            <Route path="intel/health" element={<IntelHealthPage />} />
+            <Route path="intel/growth" element={<IntelGrowthPage />} />
+            <Route path="intel/decisions" element={<IntelDecisionsPage />} />
+            <Route path="intel/predictions" element={<IntelPredictionsPage />} />
+            
+            {/* Business */}
             <Route path="sync" element={<SyncPage />} />
-            <Route path="ai" element={<AIPage />} />
-            <Route path="revenue" element={<RevenuePage />} />
             <Route path="performance" element={<PerformancePage />} />
+            
+            {/* Abonnements & Revenus */}
+            <Route path="subscriptions" element={<SubscriptionsPage />} />
+            <Route path="revenue" element={<RevenuePage />} />
+            
+            {/* IA */}
+            <Route path="ai" element={<AIPage />} />
+            
+            {/* Communication */}
             <Route path="messaging" element={<MessagingPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route path="notifications" element={<NotificationsPushPage />} />
+            
+            {/* Support */}
+            <Route path="support" element={<SupportPage />} />
+            
+            {/* Application */}
             <Route path="app-update" element={<AppUpdatePage />} />
+            <Route path="feature-flags" element={<FeatureFlagsPage />} />
+            
+            {/* Configuration */}
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="admins" element={<AdminsPage />} />
+            
+            {/* Audit */}
             <Route path="logs" element={<LogsPage />} />
           </Route>
           

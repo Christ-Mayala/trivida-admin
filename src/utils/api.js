@@ -107,6 +107,9 @@ export function formatCurrency(amount) {
   }).format(amount) + ' XAF';
 }
 
+/** Alias pour compatibilité */
+export const formatXAF = formatCurrency;
+
 /**
  * Formatage de date relatif (il y a X minutes, etc.)
  */

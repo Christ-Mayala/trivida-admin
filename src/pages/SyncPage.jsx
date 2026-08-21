@@ -76,10 +76,17 @@ export default function SyncPage() {
 
   if (error) {
     return (
-      <div className="admin-card text-center py-12">
-        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-white mb-2">Erreur de chargement</h3>
-        <p className="text-gray-400">{error}</p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Sync & Santé</h1>
+          <p className="text-gray-400 mt-1">Monitoring de la synchronisation et de l'état des appareils</p>
+        </div>
+        <div className="admin-card text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-amber-400/50 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">Données non disponibles</h3>
+          <p className="text-gray-400 max-w-md mx-auto">{error}</p>
+          <p className="text-gray-500 text-sm mt-2">Vérifie que le backend est en ligne et que l'URL API est correcte dans les variables d'environnement.</p>
+        </div>
       </div>
     );
   }
