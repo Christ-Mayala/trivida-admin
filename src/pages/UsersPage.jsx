@@ -6,7 +6,7 @@
  *   - Actions : voir profil, changer plan, suspendre
  *   - Recherche en temps réel
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, Filter, ChevronLeft, ChevronRight, 
@@ -54,14 +54,12 @@ export default function UsersPage() {
   
   // État des données
   const [users, setUsers] = useState([]);
-  const [enrichedUsers, setEnrichedUsers] = useState([]); // users + entity counts
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [entityStats, setEntityStats] = useState({}); // userId → { transactions, savingsGoals, ... }
 
-  // Fetch users
+  // Fetch users — endpoint enrichi (1 seule requête au lieu de 20)
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -70,45 +68,24 @@ export default function UsersPage() {
       const params = new URLSearchParams();
       params.set('page', page);
       params.set('limit', limit);
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (planFilter) params.set('plan', planFilter);
       if (statusFilter) params.set('status', statusFilter);
       
-      const data = await api.get(`/api/v1/trivida/admin/users?${params.toString()}`);
+      const data = await api.get(`/api/v1/trivida/admin/users/enriched?${params.toString()}`);
       
       if (data.success) {
         setUsers(data.data);
         setTotal(data.pagination?.total || 0);
         setPages(data.pagination?.pages || 0);
-
-        // Enrichir chaque user avec le nombre d'entités (stats d'activité)
-        const enriched = [];
-        const statsMap = {};
-        for (const u of data.data) {
-          try {
-            const detail = await api.get(`/api/v1/trivida/admin/users/${u._id}`);
-            const stats = detail.data?.activityStats || {};
-            statsMap[u._id] = stats;
-            enriched.push({
-              ...u,
-              _txCount: stats.transactions || 0,
-              _savingsCount: stats.savingsGoals || 0,
-              _debtCount: stats.debts || 0,
-              _hasActivity: (stats.transactions || 0) > 0,
-            });
-          } catch (e) {
-            enriched.push({ ...u, _txCount: 0, _hasActivity: false });
-          }
-        }
-        setEnrichedUsers(enriched);
-        setEntityStats(statsMap);
+        setEnrichedUsers(data.data); // déjà enrichis côté backend
       }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, planFilter, statusFilter]);
+  }, [page, limit, debouncedSearch, planFilter, statusFilter]);
 
   useEffect(() => {
     fetchUsers();
@@ -117,10 +94,24 @@ export default function UsersPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, planFilter, statusFilter]);
+  }, [planFilter, statusFilter]);
+
+  // Debounce search (500ms)
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimer = useRef(null);
+  useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(search), 500);
+    return () => clearTimeout(searchTimer.current);
+  }, [search]);
+
+  // Refetch when debouncedSearch changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   // Filtrer par activité côté client
-  const displayUsers = enrichedUsers.filter(u => {
+  const displayUsers = users.filter(u => {
     if (activityFilter === 'active') return u._hasActivity;
     if (activityFilter === 'inactive') return !u._hasActivity && u.status === 'active';
     if (activityFilter === 'no_activity') return !u._hasActivity;
@@ -233,6 +224,7 @@ export default function UsersPage() {
                   <th>Plan</th>
                   <th>Activité</th>
                   <th>Transactions</th>
+                  <th>Dernière tx</th>
                   <th>Inscription</th>
                   <th>Dernière synchro</th>
                   <th className="text-right">Actions</th>
@@ -266,6 +258,22 @@ export default function UsersPage() {
                         </span>
                       ) : (
                         <span className="text-gray-600">—</span>
+                      )}
+                    </td>
+                    <td className="text-gray-400 text-sm">
+                      {user._lastTransactionAt ? (
+                        <span className={(() => {
+                          const d = new Date(user._lastTransactionAt);
+                          const daysSince = Math.floor((Date.now() - d.getTime()) / 86400000);
+                          if (daysSince <= 1) return 'text-emerald-400 font-medium';
+                          if (daysSince <= 3) return 'text-trivida-400';
+                          if (daysSince <= 7) return 'text-amber-400';
+                          return 'text-red-400';
+                        })()}>
+                          {timeAgo(user._lastTransactionAt)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-600">Jamais</span>
                       )}
                     </td>
                     <td className="text-gray-400 text-sm">{timeAgo(user.createdAt)}</td>
