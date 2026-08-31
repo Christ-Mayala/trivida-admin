@@ -59,6 +59,15 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Debounce search (500ms)
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimer = useRef(null);
+  useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(search), 500);
+    return () => clearTimeout(searchTimer.current);
+  }, [search]);
+
   // Fetch users — endpoint enrichi (1 seule requête au lieu de 20)
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -78,7 +87,6 @@ export default function UsersPage() {
         setUsers(data.data);
         setTotal(data.pagination?.total || 0);
         setPages(data.pagination?.pages || 0);
-        setEnrichedUsers(data.data); // déjà enrichis côté backend
       }
     } catch (err) {
       setError(err.message);
@@ -94,21 +102,7 @@ export default function UsersPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [planFilter, statusFilter]);
-
-  // Debounce search (500ms)
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const searchTimer = useRef(null);
-  useEffect(() => {
-    clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(searchTimer.current);
-  }, [search]);
-
-  // Refetch when debouncedSearch changes
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, planFilter, statusFilter]);
 
   // Filtrer par activité côté client
   const displayUsers = users.filter(u => {
