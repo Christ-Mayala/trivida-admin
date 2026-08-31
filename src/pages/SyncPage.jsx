@@ -49,13 +49,18 @@ export default function SyncPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [syncRes, overviewRes] = await Promise.all([
+        const [syncRes, overviewRes] = await Promise.allSettled([
           api.get('/api/v1/trivida/admin/stats/sync'),
           api.get('/api/v1/trivida/admin/stats/overview'),
         ]);
         
-        if (syncRes.success) setSyncStats(syncRes.data);
-        if (overviewRes.success) setOverview(overviewRes.data);
+        const sync = syncRes.status === 'fulfilled' ? syncRes.value?.data : null;
+        const overview = overviewRes.status === 'fulfilled' ? overviewRes.value?.data : null;
+        
+        if (sync) setSyncStats(sync);
+        if (overview) setOverview(overview);
+        
+        if (!sync && !overview) setError('API non joignable');
       } catch (err) {
         setError(err.message);
       } finally {
