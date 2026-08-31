@@ -14,7 +14,7 @@ import {
   ScrollText, LogOut, Menu, X, Shield, ChevronRight, Bell,
   Wifi, WifiOff, Settings, Send, Activity, Heart, Trophy, Zap,
   Target, Crown, Flag, LifeBuoy, CreditCard, BarChart3,
-  ChevronDown, ChevronUp, Lightbulb
+  ChevronDown, ChevronUp, Lightbulb, TrendingUp
 } from 'lucide-react';
 
 /**
@@ -49,6 +49,7 @@ const NAV_SECTIONS = [
     items: [
       { path: '/sync', label: 'Sync & Santé', icon: RefreshCw },
       { path: '/performance', label: 'Performance', icon: Activity },
+      { path: '/retention', label: 'Rétention', icon: TrendingUp },
     ],
   },
   {

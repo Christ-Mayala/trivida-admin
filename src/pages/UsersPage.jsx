@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Search, Filter, ChevronLeft, ChevronRight, 
   Eye, Shield, Ban, CheckCircle, Crown,
-  AlertTriangle, Download, FileSpreadsheet
+  AlertTriangle, Download, FileSpreadsheet, Send
 } from 'lucide-react';
 import { api, formatNumber, timeAgo, downloadFile } from '../utils/api';
 
@@ -48,15 +48,18 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [activityFilter, setActivityFilter] = useState(''); // 'active' | 'inactive' | 'no_activity' | ''
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   
   // État des données
   const [users, setUsers] = useState([]);
+  const [enrichedUsers, setEnrichedUsers] = useState([]); // users + entity counts
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [entityStats, setEntityStats] = useState({}); // userId → { transactions, savingsGoals, ... }
 
   // Fetch users
   const fetchUsers = useCallback(async () => {
@@ -77,6 +80,28 @@ export default function UsersPage() {
         setUsers(data.data);
         setTotal(data.pagination?.total || 0);
         setPages(data.pagination?.pages || 0);
+
+        // Enrichir chaque user avec le nombre d'entités (stats d'activité)
+        const enriched = [];
+        const statsMap = {};
+        for (const u of data.data) {
+          try {
+            const detail = await api.get(`/api/v1/trivida/admin/users/${u._id}`);
+            const stats = detail.data?.activityStats || {};
+            statsMap[u._id] = stats;
+            enriched.push({
+              ...u,
+              _txCount: stats.transactions || 0,
+              _savingsCount: stats.savingsGoals || 0,
+              _debtCount: stats.debts || 0,
+              _hasActivity: (stats.transactions || 0) > 0,
+            });
+          } catch (e) {
+            enriched.push({ ...u, _txCount: 0, _hasActivity: false });
+          }
+        }
+        setEnrichedUsers(enriched);
+        setEntityStats(statsMap);
       }
     } catch (err) {
       setError(err.message);
@@ -93,6 +118,14 @@ export default function UsersPage() {
   useEffect(() => {
     setPage(1);
   }, [search, planFilter, statusFilter]);
+
+  // Filtrer par activité côté client
+  const displayUsers = enrichedUsers.filter(u => {
+    if (activityFilter === 'active') return u._hasActivity;
+    if (activityFilter === 'inactive') return !u._hasActivity && u.status === 'active';
+    if (activityFilter === 'no_activity') return !u._hasActivity;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -160,6 +193,17 @@ export default function UsersPage() {
             <option value="inactive">Inactif</option>
             <option value="deleted">Supprimé</option>
           </select>
+          {/* Filtre activité */}
+          <select
+            value={activityFilter}
+            onChange={(e) => setActivityFilter(e.target.value)}
+            className="admin-select w-full sm:w-44"
+          >
+            <option value="">Toute activité</option>
+            <option value="active">✅ Avec transactions</option>
+            <option value="inactive">⚠️ Sans transaction</option>
+            <option value="no_activity">🔴 Aucune activité</option>
+          </select>
         </div>
       </div>
 
@@ -175,7 +219,7 @@ export default function UsersPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-trivida-500 mx-auto"></div>
             <p className="text-gray-400 mt-4">Chargement...</p>
           </div>
-        ) : users.length === 0 ? (
+        ) : displayUsers.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             Aucun utilisateur trouvé
           </div>
@@ -187,15 +231,16 @@ export default function UsersPage() {
                   <th>Nom</th>
                   <th>Email</th>
                   <th>Plan</th>
-                  <th>Statut</th>
+                  <th>Activité</th>
+                  <th>Transactions</th>
                   <th>Inscription</th>
                   <th>Dernière synchro</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user._id}>
+                {displayUsers.map((user) => (
+                  <tr key={user._id} className={!user._hasActivity && user.status === 'active' ? 'bg-amber-900/10' : ''}>
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-trivida-600/20 flex items-center justify-center text-trivida-400 text-sm font-bold flex-shrink-0">
@@ -206,17 +251,52 @@ export default function UsersPage() {
                     </td>
                     <td className="text-gray-400 truncate max-w-[200px]">{user.email}</td>
                     <td><PlanBadge plan={user.premiumPlan} /></td>
-                    <td><StatusBadge status={user.status} /></td>
+                    <td>
+                      {user._hasActivity ? (
+                        <span className="badge badge-success">Actif</span>
+                      ) : (
+                        <span className="badge badge-warning">Sans tx</span>
+                      )}
+                    </td>
+                    <td className="text-gray-300 text-sm font-mono">
+                      {user._txCount > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <span className="text-trivida-400 font-bold">{user._txCount}</span>
+                          {user._savingsCount > 0 && <span className="text-emerald-400 text-xs">({user._savingsCount} ép.)</span>}
+                        </span>
+                      ) : (
+                        <span className="text-gray-600">—</span>
+                      )}
+                    </td>
                     <td className="text-gray-400 text-sm">{timeAgo(user.createdAt)}</td>
-                    <td className="text-gray-400 text-sm">{timeAgo(user.lastSyncAt)}</td>
+                    <td className="text-gray-400 text-sm">
+                      {user.lastSyncAt ? (
+                        <span className={timeAgo(user.lastSyncAt).includes('jour') && parseInt(timeAgo(user.lastSyncAt)) > 7 ? 'text-amber-400' : ''}>
+                          {timeAgo(user.lastSyncAt)}
+                        </span>
+                      ) : (
+                        <span className="text-red-400 font-medium">Jamais</span>
+                      )}
+                    </td>
                     <td className="text-right">
-                      <button
-                        onClick={() => navigate(`/users/${user._id}`)}
-                        className="text-gray-400 hover:text-trivida-400 transition-colors p-1"
-                        title="Voir le détail"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        {!user._hasActivity && user.status === 'active' && (
+                          <button
+                            onClick={() => navigate('/messaging')}
+                            className="text-amber-400 hover:text-amber-300 transition-colors p-1"
+                            title="Envoyer une relance"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => navigate(`/users/${user._id}`)}
+                          className="text-gray-400 hover:text-trivida-400 transition-colors p-1"
+                          title="Voir le détail"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -23,6 +23,7 @@ import LogsPage from './pages/LogsPage';
 import SettingsPage from './pages/SettingsPage';
 import MessagingPage from './pages/MessagingPage';
 import PerformancePage from './pages/PerformancePage';
+import RetentionPage from './pages/RetentionPage';
 
 // Pages Intel
 import IntelPage from './pages/IntelPage';
@@ -118,6 +119,7 @@ export default function App() {
             {/* Business */}
             <Route path="sync" element={<SyncPage />} />
             <Route path="performance" element={<PerformancePage />} />
+            <Route path="retention" element={<RetentionPage />} />
             
             {/* Abonnements & Revenus */}
             <Route path="subscriptions" element={<SubscriptionsPage />} />

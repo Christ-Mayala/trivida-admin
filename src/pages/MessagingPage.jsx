@@ -24,6 +24,7 @@ const TARGETS = [
   { value: 'expiring', label: 'Abonnements expirants', description: 'Expirent bientôt' },
   { value: 'inactive', label: 'Inactifs', description: 'Sans connexion depuis 30+ jours' },
   { value: 'no_activity', label: 'Sans activité', description: 'Aucune transaction ou action' },
+  { value: 'no_transaction', label: 'Sans transaction', description: 'Inscrits mais jamais de transaction' },
 ];
 
 const CHANNELS = [
@@ -49,6 +50,21 @@ const TEMPLATES = {
     category: 'relance',
     subject: 'Votre abonnement expire bientôt',
     body: 'Bonjour {name},\n\nVotre plan {plan} arrive à échéance le {expiry}. Renouvelez pour continuer à profiter de toutes les fonctionnalités premium.\n\nNe perdez pas vos données et votre historique !',
+  },
+  relance_no_transaction: {
+    category: 'relance',
+    subject: 'Commencez à suivre vos finances ! 📊',
+    body: 'Bonjour {name},\n\nVous avez téléchargé Trivida mais vous n\'avez pas encore enregistré de transaction.\n\nC\'est simple :\n1. Ouvrez l\'app\n2. Appuyez sur \'Ajouter\'\n3. Enregistrez votre première recette ou dépense\n\nVos finances méritent d\'être suivies ! 💪',
+  },
+  relance_reengage: {
+    category: 'relance',
+    subject: 'On vous attend ! 🌟',
+    body: 'Bonjour {name},\n\nIl y a un moment que Trivida ne vous a pas vu. Vos données sont toujours là, synchronisées et prêtes.\n\nRevenez pour :\n✅ Suivre vos dépenses du jour\n✅ Voir votre santé financière\n✅ Atteindre vos objectifs d\'\u00e9pargne\n\nOn fait de grandes choses ensemble ! 🚀',
+  },
+  relance_streak: {
+    category: 'relance',
+    subject: 'Votre série est en danger ! 🔥',
+    body: 'Bonjour {name},\n\nVous risquez de perdre votre série de connexion !\n\nOuvrez Trivida maintenant pour la maintenir active. Chaque jour compte dans votre parcours financier.\n\nNe lâchez pas ! 💪',
   },
   // ── PROMOTION ──
   promo_upgrade: {

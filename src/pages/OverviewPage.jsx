@@ -108,15 +108,21 @@ export default function OverviewPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [overviewRes, growthRes, perfRes] = await Promise.allSettled([
+        const [overviewRes, growthRes, perfRes, retentionRes, businessRes, healthRes] = await Promise.allSettled([
           api.get('/api/v1/trivida/admin/stats/overview'),
           api.get('/api/v1/trivida/admin/stats/growth?days=30'),
           api.get('/api/v1/trivida/admin/performance/dashboard'),
+          api.get('/api/v1/trivida/analytics/retention?period=30'),
+          api.get('/api/v1/trivida/analytics/business?period=30'),
+          fetch(`${import.meta.env.VITE_API_URL || ''}/health/ready`).then(r => r.json()).catch(() => null),
         ]);
         
         const overview = overviewRes.status === 'fulfilled' ? overviewRes.value?.data : null;
         const growthData = growthRes.status === 'fulfilled' ? growthRes.value?.data : [];
         const perf = perfRes.status === 'fulfilled' ? perfRes.value?.data : null;
+        const retention = retentionRes.status === 'fulfilled' ? retentionRes.value?.data : null;
+        const business = businessRes.status === 'fulfilled' ? businessRes.value?.data : null;
+        const health = healthRes.status === 'fulfilled' ? healthRes.value : null;
         
         // Vérifier si au moins une API a répondu
         const hasApi = overview || perf;
@@ -124,7 +130,7 @@ export default function OverviewPage() {
           setApiError('API non joignable. Configurez VITE_API_URL dans les variables d\'environnement Netlify.');
         }
         
-        setData({ ...overview, ...perf });
+        setData({ ...overview, ...perf, _retention: retention, _business: business, _health: health });
         if (growthData) setGrowth(growthData);
       } catch (err) {
         console.error(err);
@@ -145,9 +151,9 @@ export default function OverviewPage() {
   }
 
   const planData = [
-    { name: 'Free', value: data?.freeUsers || 0 },
-    { name: 'Basic', value: data?.basicUsers || 0 },
-    { name: 'Premium', value: data?.premiumUsers || 0 },
+    { name: 'Free', value: data?.users?.free || data?.freeUsers || 0 },
+    { name: 'Basic', value: data?.users?.basic || data?.basicUsers || 0 },
+    { name: 'Premium', value: data?.users?.premium || data?.premiumUsers || 0 },
   ].filter(d => d.value > 0);
 
   return (
@@ -192,12 +198,12 @@ export default function OverviewPage() {
       <div>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Aujourd'hui</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KPICard label="Utilisateurs" value={data?.totalUsers || 0} icon={Users} color="trivida" subtitle={`${data?.activeUsers || 0} actifs`} />
-          <KPICard label="Nouveaux" value={data?.newUsersThisWeek || 0} icon={UserPlus} color="emerald" subtitle="cette semaine" />
-          <KPICard label="DAU" value={data?.usersActiveToday || 0} icon={UserCheck} color="blue" subtitle="actifs aujourd'hui" />
-          <KPICard label="Premium" value={data?.premiumUsers || 0} icon={Crown} color="purple" subtitle={`${data?.basicUsers || 0} basic`} />
-          <KPICard label="MRR" value={(() => { const v = (safeNumber(data?.basicUsers) * 2000 + safeNumber(data?.premiumUsers) * 3500); return v > 0 ? `${Math.round(v / 1000)}K` : '—'; })()} icon={DollarSign} color="amber" subtitle="XAF/mois" />
-          <KPICard label="HealthScore" value={data?.avgHealthScore != null ? safeNumber(data.avgHealthScore) : '—'} icon={Heart} color="emerald" subtitle="moyen" />
+          <KPICard label="Utilisateurs" value={data?.users?.total || data?.totalUsers || 0} icon={Users} color="trivida" subtitle={`${data?.users?.active || data?.activeUsers || 0} actifs`} />
+          <KPICard label="Nouveaux" value={data?.users?.newWeek || data?.newUsersThisWeek || 0} icon={UserPlus} color="emerald" subtitle="cette semaine" />
+          <KPICard label="DAU" value={data?.users?.activeToday || data?.usersActiveToday || 0} icon={UserCheck} color="blue" subtitle="actifs aujourd'hui" />
+          <KPICard label="Premium" value={data?.users?.premium || data?.premiumUsers || 0} icon={Crown} color="purple" subtitle={`${data?.users?.basic || data?.basicUsers || 0} basic`} />
+          <KPICard label="MRR" value={(() => { const b = data?.users?.basic || data?.basicUsers || 0; const p = data?.users?.premium || data?.premiumUsers || 0; const v = (safeNumber(b) * 2000 + safeNumber(p) * 3500); return v > 0 ? `${Math.round(v / 1000)}K` : '—'; })()} icon={DollarSign} color="amber" subtitle="XAF/mois" />
+          <KPICard label="HealthScore" value={data?.healthScore != null ? safeNumber(data.healthScore) : data?.avgHealthScore != null ? safeNumber(data.avgHealthScore) : '—'} icon={Heart} color="emerald" subtitle="moyen" />
         </div>
       </div>
 
@@ -209,14 +215,14 @@ export default function OverviewPage() {
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           {[
-            { label: 'LifeOS', value: data?.lifeosToday || 0, icon: Heart, color: 'emerald', soon: true },
-            { label: 'Insights', value: data?.insightsGenerated || 0, icon: Lightbulb, color: 'amber', soon: true },
-            { label: 'Décisions', value: data?.decisionsAnalyzed || 0, icon: Brain, color: 'purple', soon: true },
-            { label: 'Challenges', value: data?.challengesActive || 0, icon: Trophy, color: 'blue', soon: true },
+            { label: 'Transactions', value: data?.entities?.transactions || 0, icon: Heart, color: 'emerald' },
+            { label: 'Objectifs Épargne', value: data?.entities?.savingsGoals || 0, icon: Target, color: 'amber' },
+            { label: 'Dettes', value: data?.entities?.debts || 0, icon: AlertTriangle, color: 'red' },
+            { label: 'Factures', value: data?.entities?.invoices || 0, icon: FileSpreadsheet, color: 'blue' },
             { label: 'Streak moyen', value: `${safeNumber(data?.avgStreak)}j`, icon: Flame, color: 'amber' },
-            { label: 'Profiles', value: safeNumber(data?.intelProfilesCompleted), icon: Target, color: 'trivida' },
-            { label: 'HealthScore', value: safeNumber(data?.avgHealthScore), icon: Heart, color: 'emerald' },
-            { label: 'Prédictions', value: data?.predictionsMade || 0, icon: Zap, color: 'cyan', soon: true },
+            { label: 'Clients', value: data?.entities?.customers || 0, icon: Users, color: 'purple' },
+            { label: 'Activités', value: data?.entities?.activities || 0, icon: Activity, color: 'trivida' },
+            { label: 'Revenu estimé', value: data?.revenue?.estimatedMonthly ? `${Math.round(data.revenue.estimatedMonthly / 1000)}K` : '—', icon: DollarSign, color: 'cyan', subtitle: 'XAF/mois' },
           ].map((item, i) => (
             <div key={i} className="admin-card text-center py-3 relative">
               <item.icon className={`w-5 h-5 mx-auto mb-1 text-${item.color}-400`} />
@@ -227,6 +233,40 @@ export default function OverviewPage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ═══ SECTION : RÉTENTION (30j) ═══ */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-trivida-400" />
+          RÉTENTION (30j)
+          {!data?._retention && <span className="text-[10px] text-gray-600 font-normal ml-2">En attente de données analytics</span>}
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <KPICard label="D1" value={data?._retention?.retention?.d1 != null ? `${safeNumber(data._retention.retention.d1)}%` : '—'} icon={UserCheck} color="emerald" subtitle=" retour jour+1" />
+          <KPICard label="D3" value={data?._retention?.retention?.d3 != null ? `${safeNumber(data._retention.retention.d3)}%` : '—'} icon={UserCheck} color="trivida" subtitle=" retour jour+3" />
+          <KPICard label="D7" value={data?._retention?.retention?.d7 != null ? `${safeNumber(data._retention.retention.d7)}%` : '—'} icon={UserCheck} color="blue" subtitle=" retour jour+7" />
+          <KPICard label="D30" value={data?._retention?.retention?.d30 != null ? `${safeNumber(data._retention.retention.d30)}%` : '—'} icon={UserCheck} color="purple" subtitle=" retour jour+30" />
+          <KPICard label="WAU" value={safeNumber(data?._retention?.dau?.wau)} icon={Users} color="amber" subtitle=" cette semaine" />
+          <KPICard label="MAU" value={safeNumber(data?._retention?.dau?.mau)} icon={Users} color="cyan" subtitle=" ce mois" />
+        </div>
+      </div>
+
+      {/* ═══ SECTION : ACTIVITÉ MÉTIER ═══ */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-trivida-400" />
+          ACTIVITÉ MÉTIER
+          {!data?._business && <span className="text-[10px] text-gray-600 font-normal ml-2">En attente de données analytics</span>}
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <KPICard label="Tx activation" value={data?._retention?.activationRate != null ? `${safeNumber(data._retention.activationRate)}%` : '—'} icon={Zap} color="emerald" subtitle=" inscription → 1ère tx" />
+          <KPICard label="Tx / jour" value={safeNumber(data?._business?.metrics?.dailyTransactions)} icon={TrendingUp} color="trivida" subtitle=" transactions aujourd'hui" />
+          <KPICard label="Tx / semaine" value={safeNumber(data?._business?.metrics?.weeklyTransactions)} icon={TrendingUp} color="blue" subtitle=" cette semaine" />
+          <KPICard label="Goals complétés" value={safeNumber(data?._business?.metrics?.goalsCompleted)} icon={Target} color="amber" subtitle=" objectifs atteints" />
+          <KPICard label="LifeOS visits" value={safeNumber(data?._business?.metrics?.lifeosVisits)} icon={Heart} color="emerald" subtitle=" visites ce mois" />
+          <KPICard label="Questions IA" value={safeNumber(data?._business?.metrics?.aiQuestions)} icon={Brain} color="purple" subtitle=" cette semaine" />
         </div>
       </div>
 
@@ -253,6 +293,9 @@ export default function OverviewPage() {
           <h3 className="text-lg font-semibold text-white mb-4">
             <TrendingUp className="w-5 h-5 inline mr-2 text-trivida-400" />
             Inscriptions (30 jours)
+            {data?.users?.newMonth != null && (
+              <span className="text-sm font-normal text-gray-400 ml-2">{formatNumber(data.users.newMonth)} ce mois</span>
+            )}
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -274,12 +317,12 @@ export default function OverviewPage() {
             Système
           </h3>
           <div className="space-y-1 divide-y divide-gray-800">
-            <SystemStatus name="API" status={data?.apiStatus || 'OPERATIONAL'} latency={data?.apiLatency || '45ms'} />
-            <SystemStatus name="MongoDB" status={data?.mongoStatus || 'OPERATIONAL'} latency={data?.mongoLatency || '12ms'} />
-            <SystemStatus name="Sync" status={data?.syncStatus || 'OPERATIONAL'} latency={`${data?.syncUptime || 99.8}%`} />
-            <SystemStatus name="IA" status={data?.iaStatus || 'OPERATIONAL'} latency={data?.iaLatency || '120ms'} />
-            <SystemStatus name="SenePay" status={data?.paymentStatus || 'OPERATIONAL'} />
-            <SystemStatus name="Notifications" status={data?.notifStatus || 'OPERATIONAL'} />
+            <SystemStatus name="API" status={data?._health?.status === 'READY' ? 'OPERATIONAL' : data?._health?.status ? 'DEGRADED' : 'EN ATTENTE'} latency={data?._health?.checks?.database?.latency_ms != null ? `${data._health.checks.database.latency_ms}ms` : '—'} />
+            <SystemStatus name="MongoDB" status={data?._health?.checks?.database?.status === 'ok' ? 'OPERATIONAL' : 'EN ATTENTE'} latency={data?._health?.checks?.database?.latency_ms != null ? `${data._health.checks.database.latency_ms}ms` : '—'} />
+            <SystemStatus name="Redis" status={data?._health?.checks?.cache?.status === 'ok' ? 'OPERATIONAL' : data?._health?.checks?.cache?.status === 'disabled' ? 'DÉSACTIVÉ' : 'EN ATTENTE'} latency={data?._health?.checks?.cache?.latency_ms != null ? `${data._health.checks.cache.latency_ms}ms` : '—'} />
+            <SystemStatus name="Mémoire" status="OPERATIONAL" latency={data?._health?.checks?.memory?.usage_mb != null ? `${data._health.checks.memory.usage_mb} MB` : '—'} />
+            <SystemStatus name="Sync" status={data?.sync?.syncRate > 0 ? 'OPERATIONAL' : 'EN ATTENTE'} latency={data?.sync?.syncRate != null ? `${data.sync.syncRate}%` : '—'} />
+            <SystemStatus name="IA" status={data?.ai?.requestsToday > 0 ? 'OPERATIONAL' : 'EN ATTENTE'} latency={data?.ai?.requestsToday != null ? `${data.ai.requestsToday} req/jour` : '—'} />
           </div>
         </div>
       </div>
@@ -311,6 +354,41 @@ export default function OverviewPage() {
           ))}
         </div>
       </div>
+
+      {/* ═══ SECTION : FUNNEL ═══ */}
+      {data?._retention?.funnel && (
+        <div className="admin-card">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4 text-trivida-400" />
+            FUNNEL D'ACTIVATION
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { step: 'Inscriptions', value: data._retention.funnel.totalUsers },
+              { step: '1ère transaction', value: data._retention.funnel.firstTransaction },
+              { step: '1er objectif', value: data._retention.funnel.firstSavingGoal },
+              { step: 'Retour J+7', value: data._retention.funnel.day7Returns },
+            ].map((item, i) => {
+              const pct = i === 0 ? 100 : (safeNumber(item.value) / safeNumber(data._retention.funnel.totalUsers) * 100);
+              return (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">{item.step}</span>
+                    <span className="text-white font-medium">{formatNumber(item.value || 0)}</span>
+                  </div>
+                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-trivida-500 transition-all duration-500"
+                      style={{ width: `${Math.min(100, pct)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500 text-right">{Math.round(pct)}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Répartition plans + Stats secondaires */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -355,19 +433,19 @@ export default function OverviewPage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Actifs aujourd'hui</span>
-              <span className="text-lg font-bold text-emerald-400">{formatNumber(data?.usersActiveToday || 0)}</span>
+              <span className="text-lg font-bold text-emerald-400">{formatNumber(data?.users?.activeToday || data?.usersActiveToday || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Verrouillés</span>
-              <span className="text-lg font-bold text-red-400">{formatNumber(data?.lockedUsers || 0)}</span>
+              <span className="text-lg font-bold text-red-400">{formatNumber(data?.users?.locked || data?.lockedUsers || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Supprimés</span>
-              <span className="text-lg font-bold text-gray-400">{formatNumber(data?.deletedUsers || 0)}</span>
+              <span className="text-lg font-bold text-gray-400">{formatNumber(data?.users?.deleted || data?.deletedUsers || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Expirant (7j)</span>
-              <span className="text-lg font-bold text-amber-400">{formatNumber(data?.expiringIn7Days || 0)}</span>
+              <span className="text-lg font-bold text-amber-400">{formatNumber(data?.revenue?.expiringIn7Days || data?.expiringIn7Days || 0)}</span>
             </div>
           </div>
         </div>
@@ -381,19 +459,19 @@ export default function OverviewPage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Sync aujourd'hui</span>
-              <span className="text-lg font-bold text-trivida-400">{formatNumber(data?.usersSyncToday || 0)}</span>
+              <span className="text-lg font-bold text-trivida-400">{formatNumber(data?.sync?.today || data?.usersSyncToday || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Sync cette semaine</span>
-              <span className="text-lg font-bold text-white">{formatNumber(data?.usersSyncWeek || 0)}</span>
+              <span className="text-lg font-bold text-white">{formatNumber(data?.sync?.week || data?.usersSyncWeek || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Jamais synchronisés</span>
-              <span className="text-lg font-bold text-red-400">{formatNumber(data?.usersNeverSynced || 0)}</span>
+              <span className="text-lg font-bold text-red-400">{formatNumber(data?.sync?.neverSynced || data?.usersNeverSynced || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Total appareils</span>
-              <span className="text-lg font-bold text-white">{formatNumber(data?.totalDeviceIds || 0)}</span>
+              <span className="text-lg font-bold text-white">{formatNumber(data?.sync?.devices || data?.totalDeviceIds || 0)}</span>
             </div>
           </div>
         </div>
